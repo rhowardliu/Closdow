@@ -1,0 +1,89 @@
+int measurePin = A0;
+int ledPower = 10;
+int waterPin = A1;
+int WATEROUTPUT = 7; //8
+int DUSTOUTPUT = 8;
+
+
+unsigned int samplingTime = 280;
+unsigned int deltaTime = 40;
+unsigned int sleepTime = 9680;
+
+float voMeasured = 0;
+float calcVoltage = 0;
+float dustDensity = 0;
+
+void setup(){
+  Serial.begin(9600);
+
+  pinMode(ledPower,OUTPUT);
+  pinMode(DUSTOUTPUT, OUTPUT);
+  pinMode (WATEROUTPUT, OUTPUT); //water
+
+}
+
+void loop(){
+  digitalWrite(ledPower,LOW);
+  delayMicroseconds(samplingTime);
+
+
+  voMeasured = analogRead(measurePin);
+  int waterValue = analogRead(waterPin);
+  int rain = 0;
+
+   if (waterValue > 700) {
+    rain = 0;
+    Serial.println("Not raining");
+    Serial.println(rain);
+    digitalWrite(WATEROUTPUT, LOW);
+  }
+
+  else {
+    rain = 1;
+    Serial.println("Raining");
+    Serial.println(rain);
+    digitalWrite(WATEROUTPUT, HIGH);
+  }
+
+
+  Serial.println(waterValue);
+
+  delay(100);
+
+
+  delayMicroseconds(deltaTime);
+  digitalWrite(ledPower,HIGH);
+  delayMicroseconds(sleepTime);
+
+  calcVoltage = voMeasured*(5.0/1024);
+  dustDensity = 0.17*calcVoltage-0.1;
+
+  if ( dustDensity < 0)
+  {
+    dustDensity = 0.00;
+  }
+
+ // Serial.println("Raw Signal Value (0-1023):");
+ // Serial.println(voMeasured);
+
+ // Serial.println("Voltage:");
+ // Serial.println(calcVoltage);
+
+ // Serial.println("Dust Density:");
+ // Serial.println(dustDensity);
+
+if (voMeasured > 800) {
+
+   // Serial.println("Air is dirty");
+    digitalWrite(DUSTOUTPUT, HIGH);
+  }
+
+
+else if (voMeasured < 799) {
+
+   // Serial.println("Air is clean");
+    digitalWrite(DUSTOUTPUT, LOW);
+  }
+
+  delay(3000);
+}

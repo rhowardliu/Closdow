@@ -1,0 +1,140 @@
+const int DIR_A = 5;
+const int DIR_B = 4;
+const int PWM = 6;
+const int controller = 12;
+const int waterTarget = 8;
+
+long CHILDLOCKEDTIME = 3000;
+long REGTIME = 7500;
+long OFFSET = 3000;
+int byteRead;
+bool enableSensor = true;
+bool childLocked=false;
+bool isOpen=false;
+char receivedChar;
+
+void setup()
+{
+  Serial.begin(9600);
+  delay(2000);
+//set all pins as output
+pinMode(DIR_A, OUTPUT);
+pinMode(DIR_B, OUTPUT);
+pinMode(PWM, OUTPUT);
+pinMode(controller, INPUT);
+}
+
+void loop()
+{
+
+ //drive forward at full speed by pulling DIR_A High
+ //and DIR_B low, while writing a full 255 to PWM to
+ //control speed
+
+// bool sensorValue = digitalRead(controller);
+// Serial.println(sensorValue);
+ fetchInstructionsFromSensors();
+ fetchInstructionsFromPi();
+
+
+}
+
+void fetchInstructionsFromSensors(){
+ if (not enableSensor) return;
+
+ bool sensorValue = digitalRead(controller);
+// Serial.println(sensorValue);
+ bool waterValue = digitalRead(waterTarget);
+// Serial.println("The water is");
+// Serial.println(waterValue);
+
+ if ((sensorValue == 0) && (waterValue == 0)){
+  do_open();
+//  Serial.println('O');
+ }
+ else {
+  do_close();
+//  Serial.println('X');
+
+ }
+
+}
+
+void fetchInstructionsFromPi(){
+  Serial.println("Reading from pi");
+ if (Serial.available() > 0){
+
+  receivedChar = Serial.read();
+//  Serial.println(receivedChar);
+  execute_command();
+ }
+}
+
+void execute_command(){
+ if (receivedChar == 'l')
+  childLocked = true;
+ else if (receivedChar == 'u'){
+  childLocked = false;
+  isOpen = false;
+  }
+ else if (receivedChar == 'e')
+  enableSensor = true;
+ else if (receivedChar == 'd')
+  enableSensor = false;
+ else if (receivedChar == 'o')
+  do_open();
+ else if (receivedChar == 'c')
+  do_close();
+
+}
+
+void do_open(){
+ if (isOpen) return;
+ else if (childLocked)
+  open(CHILDLOCKEDTIME);
+ else
+  open(REGTIME);
+ isOpen = true;
+}
+
+void open(long millitime){
+ long starttime = millis();
+ long endtime = starttime;
+
+ if ((endtime - starttime) <= millitime){
+  digitalWrite(DIR_A, LOW);
+  digitalWrite(DIR_B, HIGH);
+  analogWrite(PWM, 255);
+  endtime = millis();
+  flushBuffer();
+ }
+
+}
+
+void do_close(){
+ if (!isOpen) return;
+ else if (childLocked)
+  close(CHILDLOCKEDTIME + OFFSET);
+ else
+  close(REGTIME + OFFSET);
+ isOpen = false;
+}
+
+void close(long millitime){
+ long starttime = millis();
+ long endtime = starttime;
+
+ while ((endtime - starttime) <= millitime){
+  digitalWrite(DIR_A, HIGH);
+  digitalWrite(DIR_B, LOW);
+  analogWrite(PWM, 255);
+  endtime = millis();
+  flushBuffer();
+ }
+ }
+
+
+void flushBuffer(){
+while (Serial.available())
+  Serial.read();
+}
